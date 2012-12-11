@@ -147,9 +147,16 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
   int r;
   mrb_value query = argv[0];
 	const char* error = NULL;
-	r = sqlite3_prepare_v2(db->db, RSTRING_PTR(query), -1, &sstmt, &error);
+	r = sqlite3_prepare_v2(db->db, RSTRING_PTR(query), RSTRING_LEN(query), &sstmt, &error);
 	if (r != SQLITE_OK) {
+    if (sstmt) {
+		  sqlite3_finalize(sstmt);
+      sqlite3_reset(sstmt);
+    }
     mrb_raise(mrb, E_RUNTIME_ERROR, sqlite3_errmsg(db->db));
+  }
+  if (!sstmt) {
+    return mrb_nil_value();
   }
 
   for (i = 1; i < argc; i++) {

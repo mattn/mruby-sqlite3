@@ -1,6 +1,11 @@
 #!mruby
-
 db = SQLite3::Database.new('example/foo.db')
+begin
+  db.execute(db, 'create table foo(id integer primary key, text text)')
+rescue RuntimeError
+  # TODO: reopen
+  db = SQLite3::Database.new('example/foo.db')
+end
 
 db.execute('select * from foo') do |row, fields|
   puts row
