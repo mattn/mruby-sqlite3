@@ -147,7 +147,7 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
   int r;
   mrb_value query = argv[0];
 	const char* error = NULL;
-	r = sqlite3_prepare_v2(db->db, RSTRING_PTR(query), RSTRING_LEN(query), &sstmt, &error);
+	r = sqlite3_prepare_v2(db->db, RSTRING_PTR(query), -1, &sstmt, &error);
 	if (r != SQLITE_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, sqlite3_errmsg(db->db));
   }
