@@ -85,15 +85,18 @@ mrb_sqlite3_database_init(mrb_state *mrb, mrb_value self) {
 
 static mrb_value
 mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
+  mrb_value *argv;
+  int argc = 0;
   mrb_value value_context;
   mrb_sqlite3_database* db = NULL;
   mrb_sqlite3_statement* stmt = NULL;
   struct RProc* b = NULL;
 	sqlite3_stmt* sstmt = NULL;
+  int i;
 
-  mrb_value arg_query;
-  mrb_get_args(mrb, "&o", &b, &arg_query);
-  if (mrb_nil_p(arg_query)) {
+  mrb_get_args(mrb, "*&", &argv, &argc, &b);
+
+  if (argc == 0) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
   }
   value_context = mrb_iv_get(mrb, self, mrb_intern(mrb, "context"));
@@ -102,9 +105,40 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
   }
 
+  mrb_value query = argv[0];
 	const char* error = NULL;
-	if (sqlite3_prepare_v2(db->db, RSTRING_PTR(arg_query), RSTRING_LEN(arg_query), &sstmt, &error) != SQLITE_OK) {
+	if (sqlite3_prepare_v2(db->db, RSTRING_PTR(query), RSTRING_LEN(query), &sstmt, &error) != SQLITE_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, sqlite3_errmsg(db->db));
+  }
+
+  for (i = 1; i < argc; i++) {
+    int rv = SQLITE_MISMATCH;
+		switch (mrb_type(argv[i])) {
+		case MRB_TT_UNDEF:
+			rv = sqlite3_bind_null(sstmt, i);
+      break;
+		case MRB_TT_STRING:
+		  rv = sqlite3_bind_text(sstmt, i, RSTRING_PTR(argv[i]), RSTRING_LEN(argv[i]), NULL);
+      break;
+		case MRB_TT_FIXNUM:
+			rv = sqlite3_bind_int(sstmt, i, mrb_fixnum(argv[i]));
+      break;
+		case MRB_TT_FLOAT:
+			rv = sqlite3_bind_double(sstmt, i, mrb_float(argv[i]));
+      break;
+		case MRB_TT_TRUE:
+			rv = sqlite3_bind_int(sstmt, i, 1);
+      break;
+		case MRB_TT_FALSE:
+			rv = sqlite3_bind_int(sstmt, i, 0);
+      break;
+    default:
+      mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
+      break;
+		}
+		if (rv != SQLITE_OK) {
+      mrb_raise(mrb, E_ARGUMENT_ERROR, sqlite3_errmsg(db->db));
+		}
   }
 
   if (!b) {
@@ -124,7 +158,7 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
     return c;
   }
   mrb_value fields = mrb_ary_new(mrb);
-  int i, count = sqlite3_column_count(sstmt);
+  int count = sqlite3_column_count(sstmt);
   for (i = 0; i < count; i++) {
     const char* name = sqlite3_column_name(sstmt, i);
     mrb_ary_push(mrb, fields, mrb_str_new_cstr(mrb, name));
@@ -153,7 +187,7 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
       case SQLITE_BLOB:
         {
 			    int size = sqlite3_column_bytes(sstmt, i);
-			    char* ptr = sqlite3_column_blob(sstmt, i);
+			    const char* ptr = sqlite3_column_blob(sstmt, i);
           mrb_ary_push(mrb, a, mrb_str_new(mrb, ptr, size));
         }
         break;
