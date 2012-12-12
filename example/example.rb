@@ -1,12 +1,10 @@
 #!mruby
-db = SQLite3::Database.new('example/foo.db')
 begin
-  db.execute(db, 'create table foo(id integer primary key, text text)')
+  SQLite3::Database.new('example/foo.db').execute('create table foo(id integer primary key, text text)')
 rescue RuntimeError
-  # TODO: reopen
-  db = SQLite3::Database.new('example/foo.db')
 end
 
+db = SQLite3::Database.new('example/foo.db')
 db.execute('select * from foo') do |row, fields|
   puts row
 end
@@ -14,5 +12,6 @@ end
 row = db.execute('select * from foo where id = ?', 1)
 puts row.fields()
 puts row.next()
+row.close()
 
 db.close()

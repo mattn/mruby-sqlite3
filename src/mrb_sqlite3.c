@@ -146,8 +146,7 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
 
   int r;
   mrb_value query = argv[0];
-	const char* error = NULL;
-	r = sqlite3_prepare_v2(db->db, RSTRING_PTR(query), RSTRING_LEN(query), &sstmt, &error);
+	r = sqlite3_prepare_v2(db->db, RSTRING_PTR(query), RSTRING_LEN(query), &sstmt, NULL);
 	if (r != SQLITE_OK) {
     if (sstmt) {
 		  sqlite3_finalize(sstmt);
@@ -159,6 +158,7 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
     return mrb_nil_value();
   }
 
+  sqlite3_reset(sstmt);
   for (i = 1; i < argc; i++) {
     int rv = SQLITE_MISMATCH;
 		switch (mrb_type(argv[i])) {
@@ -222,6 +222,7 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
     mrb_yield_argv(mrb, proc, 2, args);
     mrb_gc_arena_restore(mrb, ai);
   }
+  sqlite3_finalize(sstmt);
   if (r != SQLITE_OK && r != SQLITE_DONE) {
     mrb_raise(mrb, E_RUNTIME_ERROR, sqlite3_errmsg(db->db));
   }
