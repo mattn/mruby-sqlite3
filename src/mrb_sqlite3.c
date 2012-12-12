@@ -319,6 +319,28 @@ mrb_sqlite3_database_close(mrb_state *mrb, mrb_value self) {
 }
 
 static mrb_value
+mrb_sqlite3_database_last_insert_rowid(mrb_state *mrb, mrb_value self) {
+  mrb_value value_context = mrb_iv_get(mrb, self, mrb_intern(mrb, "context"));
+  mrb_sqlite3_database* db = NULL;
+  Data_Get_Struct(mrb, value_context, &mrb_sqlite3_database_type, db);
+  if (!db) {
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
+  }
+  return mrb_fixnum_value(sqlite3_last_insert_rowid(db->db));
+}
+
+static mrb_value
+mrb_sqlite3_database_changes(mrb_state *mrb, mrb_value self) {
+  mrb_value value_context = mrb_iv_get(mrb, self, mrb_intern(mrb, "context"));
+  mrb_sqlite3_database* db = NULL;
+  Data_Get_Struct(mrb, value_context, &mrb_sqlite3_database_type, db);
+  if (!db) {
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
+  }
+  return mrb_fixnum_value(sqlite3_changes(db->db));
+}
+
+static mrb_value
 mrb_sqlite3_statement_next(mrb_state *mrb, mrb_value self) {
   mrb_value value_context = mrb_iv_get(mrb, self, mrb_intern(mrb, "context"));
   mrb_sqlite3_statement* stmt = NULL;
@@ -352,17 +374,6 @@ mrb_sqlite3_statement_fields(mrb_state *mrb, mrb_value self) {
   return mrb_iv_get(mrb, self, mrb_intern(mrb, "fields"));
 }
 
-static mrb_value
-mrb_sqlite3_statement_changes(mrb_state *mrb, mrb_value self) {
-  mrb_value value_context = mrb_iv_get(mrb, self, mrb_intern(mrb, "context"));
-  mrb_sqlite3_statement* stmt = NULL;
-  Data_Get_Struct(mrb, value_context, &mrb_sqlite3_statement_type, stmt);
-  if (!stmt) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
-  }
-  return mrb_fixnum_value(sqlite3_changes(stmt->db));
-}
-
 void
 mrb_mruby_sqlite3_gem_init(mrb_state* mrb) {
   int ai;
@@ -375,6 +386,8 @@ mrb_mruby_sqlite3_gem_init(mrb_state* mrb) {
   mrb_define_method(mrb, _class_sqlite3_database, "execute", mrb_sqlite3_database_execute, ARGS_OPT(1));
   mrb_define_method(mrb, _class_sqlite3_database, "execute_batch", mrb_sqlite3_database_execute_batch, ARGS_OPT(1));
   mrb_define_method(mrb, _class_sqlite3_database, "close", mrb_sqlite3_database_close, ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_database, "last_insert_rowid", mrb_sqlite3_database_last_insert_rowid, ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_database, "changes", mrb_sqlite3_database_changes, ARGS_NONE());
   mrb_gc_arena_restore(mrb, ai);
 
   ai = mrb_gc_arena_save(mrb);
@@ -382,7 +395,6 @@ mrb_mruby_sqlite3_gem_init(mrb_state* mrb) {
   mrb_define_method(mrb, _class_sqlite3_statement, "next", mrb_sqlite3_statement_next, ARGS_NONE());
   mrb_define_method(mrb, _class_sqlite3_statement, "close", mrb_sqlite3_statement_close, ARGS_NONE());
   mrb_define_method(mrb, _class_sqlite3_statement, "fields", mrb_sqlite3_statement_fields, ARGS_NONE());
-  mrb_define_method(mrb, _class_sqlite3_statement, "changes", mrb_sqlite3_statement_changes, ARGS_NONE());
   mrb_gc_arena_restore(mrb, ai);
 }
 
