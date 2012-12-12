@@ -224,6 +224,7 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
       Data_Wrap_Struct(mrb, mrb->object_class,
       &mrb_sqlite3_statement_type, (void*) sstmt)));
     mrb_iv_set(mrb, c, mrb_intern(mrb, "fields"), fields);
+    mrb_iv_set(mrb, c, mrb_intern(mrb, "eof"), mrb_false_value());
     return c;
   }
   mrb_value args[2];
@@ -382,6 +383,11 @@ mrb_sqlite3_statement_next(mrb_state *mrb, mrb_value self) {
   if (r != SQLITE_ROW && r != SQLITE_OK && r != SQLITE_DONE) {
     mrb_raise(mrb, E_RUNTIME_ERROR, sqlite3_errmsg(stmt->db));
   }
+  if (r == SQLITE_DONE) {
+    mrb_iv_set(mrb, self, mrb_intern(mrb, "eof"), mrb_true_value());
+    return mrb_nil_value();
+  }
+
   return row_to_value(mrb, stmt->stmt);
 }
 
@@ -402,6 +408,11 @@ mrb_sqlite3_statement_close(mrb_state *mrb, mrb_value self) {
 static mrb_value
 mrb_sqlite3_statement_fields(mrb_state *mrb, mrb_value self) {
   return mrb_iv_get(mrb, self, mrb_intern(mrb, "fields"));
+}
+
+static mrb_value
+mrb_sqlite3_statement_eof(mrb_state *mrb, mrb_value self) {
+  return mrb_iv_get(mrb, self, mrb_intern(mrb, "eof"));
 }
 
 void
@@ -428,6 +439,7 @@ mrb_mruby_sqlite3_gem_init(mrb_state* mrb) {
   mrb_define_method(mrb, _class_sqlite3_statement, "next", mrb_sqlite3_statement_next, ARGS_NONE());
   mrb_define_method(mrb, _class_sqlite3_statement, "close", mrb_sqlite3_statement_close, ARGS_NONE());
   mrb_define_method(mrb, _class_sqlite3_statement, "fields", mrb_sqlite3_statement_fields, ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_statement, "eof?", mrb_sqlite3_statement_eof, ARGS_NONE());
   mrb_gc_arena_restore(mrb, ai);
 }
 

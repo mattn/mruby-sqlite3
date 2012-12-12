@@ -24,7 +24,9 @@ end
 
 row = db.execute('select * from foo where text = ?', 'foo')
 puts row.fields()
-puts row.next()
+while !row.eof?
+  puts row.next()
+end
 row.close()
 
 db.close()
