@@ -341,6 +341,36 @@ mrb_sqlite3_database_changes(mrb_state *mrb, mrb_value self) {
 }
 
 static mrb_value
+mrb_sqlite3_database_exec(mrb_state *mrb, mrb_value self, const char* query) {
+  mrb_value value_context = mrb_iv_get(mrb, self, mrb_intern(mrb, "context"));
+  mrb_sqlite3_database* db = NULL;
+  Data_Get_Struct(mrb, value_context, &mrb_sqlite3_database_type, db);
+  if (!db) {
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
+  }
+  int r = sqlite3_exec(db->db, query, NULL, NULL, NULL);
+  if (r != SQLITE_OK) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, sqlite3_errmsg(db->db));
+  }
+  return mrb_nil_value();
+}
+
+static mrb_value
+mrb_sqlite3_database_transaction(mrb_state *mrb, mrb_value self) {
+  return mrb_sqlite3_database_exec(mrb, self, "begin");
+}
+
+static mrb_value
+mrb_sqlite3_database_commit(mrb_state *mrb, mrb_value self) {
+  return mrb_sqlite3_database_exec(mrb, self, "commit");
+}
+
+static mrb_value
+mrb_sqlite3_database_rollback(mrb_state *mrb, mrb_value self) {
+  return mrb_sqlite3_database_exec(mrb, self, "rollback");
+}
+
+static mrb_value
 mrb_sqlite3_statement_next(mrb_state *mrb, mrb_value self) {
   mrb_value value_context = mrb_iv_get(mrb, self, mrb_intern(mrb, "context"));
   mrb_sqlite3_statement* stmt = NULL;
@@ -388,6 +418,9 @@ mrb_mruby_sqlite3_gem_init(mrb_state* mrb) {
   mrb_define_method(mrb, _class_sqlite3_database, "close", mrb_sqlite3_database_close, ARGS_NONE());
   mrb_define_method(mrb, _class_sqlite3_database, "last_insert_rowid", mrb_sqlite3_database_last_insert_rowid, ARGS_NONE());
   mrb_define_method(mrb, _class_sqlite3_database, "changes", mrb_sqlite3_database_changes, ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_database, "transaction", mrb_sqlite3_database_transaction, ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_database, "commit", mrb_sqlite3_database_commit, ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_database, "rollback", mrb_sqlite3_database_rollback, ARGS_NONE());
   mrb_gc_arena_restore(mrb, ai);
 
   ai = mrb_gc_arena_save(mrb);
