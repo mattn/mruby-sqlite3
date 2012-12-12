@@ -11,7 +11,7 @@
 
 static struct RClass *_class_sqlite3;
 static struct RClass *_class_sqlite3_database;
-static struct RClass *_class_sqlite3_statement;
+static struct RClass *_class_sqlite3_resultset;
 
 typedef struct {
   mrb_state *mrb;
@@ -22,7 +22,7 @@ typedef struct {
   mrb_state *mrb;
   sqlite3* db;
   sqlite3_stmt* stmt;
-} mrb_sqlite3_statement;
+} mrb_sqlite3_resultset;
 
 static void
 mrb_sqlite3_database_free(mrb_state *mrb, void *p) {
@@ -34,20 +34,20 @@ mrb_sqlite3_database_free(mrb_state *mrb, void *p) {
 }
 
 static void
-mrb_sqlite3_statement_free(mrb_state *mrb, void *p) {
-  mrb_sqlite3_statement* stmt = (mrb_sqlite3_statement*) p;
-  if (stmt->stmt) {
-    sqlite3_finalize(stmt->stmt);
+mrb_sqlite3_resultset_free(mrb_state *mrb, void *p) {
+  mrb_sqlite3_resultset* rs = (mrb_sqlite3_resultset*) p;
+  if (rs->stmt) {
+    sqlite3_finalize(rs->stmt);
   }
-  free(stmt);
+  free(rs);
 }
 
 static const struct mrb_data_type mrb_sqlite3_database_type = {
   "mrb_sqlite3_database", mrb_sqlite3_database_free,
 };
 
-static const struct mrb_data_type mrb_sqlite3_statement_type = {
-  "mrb_sqlite3_statement", mrb_sqlite3_statement_free,
+static const struct mrb_data_type mrb_sqlite3_resultset_type = {
+  "mrb_sqlite3_resultset", mrb_sqlite3_resultset_free,
 };
 
 static mrb_value
@@ -210,19 +210,19 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
   }
 
   if (!b) {
-    mrb_sqlite3_statement* sstmt = (mrb_sqlite3_statement*)
-      malloc(sizeof(mrb_sqlite3_statement));
-    if (!sstmt) {
+    mrb_sqlite3_resultset* rs = (mrb_sqlite3_resultset*)
+      malloc(sizeof(mrb_sqlite3_resultset));
+    if (!rs) {
       mrb_raise(mrb, E_RUNTIME_ERROR, "can't memory alloc");
     }
-    memset(sstmt, 0, sizeof(mrb_sqlite3_statement));
-    sstmt->mrb = mrb;
-    sstmt->db = db->db;
-    sstmt->stmt = stmt;
-    mrb_value c = mrb_class_new_instance(mrb, 0, NULL, _class_sqlite3_statement);
+    memset(rs, 0, sizeof(mrb_sqlite3_resultset));
+    rs->mrb = mrb;
+    rs->db = db->db;
+    rs->stmt = stmt;
+    mrb_value c = mrb_class_new_instance(mrb, 0, NULL, _class_sqlite3_resultset);
     mrb_iv_set(mrb, c, mrb_intern(mrb, "context"), mrb_obj_value(
       Data_Wrap_Struct(mrb, mrb->object_class,
-      &mrb_sqlite3_statement_type, (void*) sstmt)));
+      &mrb_sqlite3_resultset_type, (void*) rs)));
     mrb_iv_set(mrb, c, mrb_intern(mrb, "fields"), fields);
     mrb_iv_set(mrb, c, mrb_intern(mrb, "eof"), mrb_false_value());
     return c;
@@ -372,46 +372,46 @@ mrb_sqlite3_database_rollback(mrb_state *mrb, mrb_value self) {
 }
 
 static mrb_value
-mrb_sqlite3_statement_next(mrb_state *mrb, mrb_value self) {
+mrb_sqlite3_resultset_next(mrb_state *mrb, mrb_value self) {
   mrb_value value_context = mrb_iv_get(mrb, self, mrb_intern(mrb, "context"));
-  mrb_sqlite3_statement* stmt = NULL;
-  Data_Get_Struct(mrb, value_context, &mrb_sqlite3_statement_type, stmt);
-  if (!stmt) {
+  mrb_sqlite3_resultset* rs = NULL;
+  Data_Get_Struct(mrb, value_context, &mrb_sqlite3_resultset_type, rs);
+  if (!rs) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
   }
-  int r = sqlite3_step(stmt->stmt);
+  int r = sqlite3_step(rs->stmt);
   if (r != SQLITE_ROW && r != SQLITE_OK && r != SQLITE_DONE) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, sqlite3_errmsg(stmt->db));
+    mrb_raise(mrb, E_RUNTIME_ERROR, sqlite3_errmsg(rs->db));
   }
   if (r == SQLITE_DONE) {
     mrb_iv_set(mrb, self, mrb_intern(mrb, "eof"), mrb_true_value());
     return mrb_nil_value();
   }
 
-  return row_to_value(mrb, stmt->stmt);
+  return row_to_value(mrb, rs->stmt);
 }
 
 static mrb_value
-mrb_sqlite3_statement_close(mrb_state *mrb, mrb_value self) {
+mrb_sqlite3_resultset_close(mrb_state *mrb, mrb_value self) {
   mrb_value value_context = mrb_iv_get(mrb, self, mrb_intern(mrb, "context"));
-  mrb_sqlite3_statement* stmt = NULL;
-  Data_Get_Struct(mrb, value_context, &mrb_sqlite3_statement_type, stmt);
-  if (!stmt) {
+  mrb_sqlite3_resultset* rs = NULL;
+  Data_Get_Struct(mrb, value_context, &mrb_sqlite3_resultset_type, rs);
+  if (!rs) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
   }
-  if (sqlite3_finalize(stmt->stmt) != SQLITE_OK) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, sqlite3_errmsg(stmt->db));
+  if (sqlite3_finalize(rs->stmt) != SQLITE_OK) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, sqlite3_errmsg(rs->db));
   }
   return mrb_nil_value();
 }
 
 static mrb_value
-mrb_sqlite3_statement_fields(mrb_state *mrb, mrb_value self) {
+mrb_sqlite3_resultset_fields(mrb_state *mrb, mrb_value self) {
   return mrb_iv_get(mrb, self, mrb_intern(mrb, "fields"));
 }
 
 static mrb_value
-mrb_sqlite3_statement_eof(mrb_state *mrb, mrb_value self) {
+mrb_sqlite3_resultset_eof(mrb_state *mrb, mrb_value self) {
   return mrb_iv_get(mrb, self, mrb_intern(mrb, "eof"));
 }
 
@@ -435,11 +435,11 @@ mrb_mruby_sqlite3_gem_init(mrb_state* mrb) {
   mrb_gc_arena_restore(mrb, ai);
 
   ai = mrb_gc_arena_save(mrb);
-  _class_sqlite3_statement = mrb_define_class_under(mrb, _class_sqlite3, "Statement", mrb->object_class);
-  mrb_define_method(mrb, _class_sqlite3_statement, "next", mrb_sqlite3_statement_next, ARGS_NONE());
-  mrb_define_method(mrb, _class_sqlite3_statement, "close", mrb_sqlite3_statement_close, ARGS_NONE());
-  mrb_define_method(mrb, _class_sqlite3_statement, "fields", mrb_sqlite3_statement_fields, ARGS_NONE());
-  mrb_define_method(mrb, _class_sqlite3_statement, "eof?", mrb_sqlite3_statement_eof, ARGS_NONE());
+  _class_sqlite3_resultset = mrb_define_class_under(mrb, _class_sqlite3, "ResultSet", mrb->object_class);
+  mrb_define_method(mrb, _class_sqlite3_resultset, "next", mrb_sqlite3_resultset_next, ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_resultset, "close", mrb_sqlite3_resultset_close, ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_resultset, "fields", mrb_sqlite3_resultset_fields, ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_resultset, "eof?", mrb_sqlite3_resultset_eof, ARGS_NONE());
   mrb_gc_arena_restore(mrb, ai);
 }
 
