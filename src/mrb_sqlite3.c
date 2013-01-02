@@ -316,6 +316,7 @@ mrb_sqlite3_database_close(mrb_state *mrb, mrb_value self) {
   if (sqlite3_close(db->db) != SQLITE_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, sqlite3_errmsg(db->db));
   }
+  db->db = NULL;
   return mrb_nil_value();
 }
 
