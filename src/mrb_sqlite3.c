@@ -8,6 +8,7 @@
 #include <mruby/class.h>
 #include <mruby/variable.h>
 #include <sqlite3.h>
+#include <stdio.h>
 
 static struct RClass *_class_sqlite3;
 static struct RClass *_class_sqlite3_database;
@@ -36,9 +37,6 @@ mrb_sqlite3_database_free(mrb_state *mrb, void *p) {
 static void
 mrb_sqlite3_resultset_free(mrb_state *mrb, void *p) {
   mrb_sqlite3_resultset* rs = (mrb_sqlite3_resultset*) p;
-  if (rs->stmt) {
-    sqlite3_finalize(rs->stmt);
-  }
   free(rs);
 }
 
@@ -268,12 +266,13 @@ mrb_sqlite3_database_execute_batch(mrb_state *mrb, mrb_value self) {
   if (!top) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "can't memory alloc");
   }
-  strncpy(top, RSTRING_PTR(query), len);
-  const char* tail = (const char*) top;
+  memcpy(top, RSTRING_PTR(query), len);
+  top[len] = 0;
+  const char *tail = (const char*) top, *sql;
 
-  while (*tail) {
+  while (*(sql = tail)) {
     sqlite3_stmt* stmt = NULL;
-    int r = sqlite3_prepare_v2(db->db, tail, -1, &stmt, &tail);
+    int r = sqlite3_prepare_v2(db->db, sql, -1, &stmt, &tail);
     if (argc > 1) {
       const char* error = bind_values(mrb, db->db, stmt, argc-1, &argv[1]);
       argc = 0;
@@ -312,6 +311,11 @@ mrb_sqlite3_database_close(mrb_state *mrb, mrb_value self) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
   }
   if (db->db) {
+    sqlite3_stmt* stmt = sqlite3_next_stmt(db->db, NULL);
+    while (stmt != NULL) {
+      sqlite3_finalize(stmt);
+      stmt = sqlite3_next_stmt(db->db, NULL);
+    }
     if (sqlite3_close(db->db) != SQLITE_OK) {
       mrb_raise(mrb, E_RUNTIME_ERROR, sqlite3_errmsg(db->db));
     }
