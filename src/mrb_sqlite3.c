@@ -168,7 +168,7 @@ static mrb_value
 mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
   int argc = 0;
   mrb_value* argv = NULL;
-  mrb_value b;
+  mrb_value b = mrb_nil_value();
   mrb_get_args(mrb, "&*", &b, &argv, &argc);
 
   if (argc == 0) {
@@ -210,7 +210,7 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
     mrb_ary_push(mrb, fields, mrb_str_new_cstr(mrb, name));
   }
 
-  if (!mrb_block_given_p()) {
+  if (mrb_nil_p(b)) {
     mrb_sqlite3_resultset* rs = (mrb_sqlite3_resultset*)
       malloc(sizeof(mrb_sqlite3_resultset));
     if (!rs) {
@@ -229,12 +229,11 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
     return c;
   }
   mrb_value args[2];
-  mrb_value proc = mrb_obj_value(&b);
   while ((r = sqlite3_step(stmt)) == SQLITE_ROW) {
     int ai = mrb_gc_arena_save(mrb);
     args[0] = row_to_value(mrb, stmt);
     args[1] = fields;
-    mrb_yield_argv(mrb, proc, 2, args);
+    mrb_yield_argv(mrb, b, 2, args);
     mrb_gc_arena_restore(mrb, ai);
   }
   sqlite3_finalize(stmt);
