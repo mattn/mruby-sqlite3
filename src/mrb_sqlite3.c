@@ -10,9 +10,18 @@
 #include <sqlite3.h>
 #include <stdio.h>
 
-static struct RClass *_class_sqlite3;
-static struct RClass *_class_sqlite3_database;
-static struct RClass *_class_sqlite3_resultset;
+#if 1
+#define ARENA_SAVE \
+  int ai = mrb_gc_arena_save(mrb); \
+  if (ai == MRB_ARENA_SIZE) { \
+    mrb_raise(mrb, E_RUNTIME_ERROR, "arena overflow"); \
+  }
+#define ARENA_RESTORE \
+  mrb_gc_arena_restore(mrb, ai);
+#else
+#define ARENA_SAVE
+#define ARENA_RESTORE
+#endif
 
 typedef struct {
   mrb_state *mrb;
@@ -219,6 +228,8 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
     memset(rs, 0, sizeof(mrb_sqlite3_resultset));
     rs->mrb = mrb;
     rs->stmt = stmt;
+    struct RClass* _class_sqlite3 = mrb_class_get(mrb, "SQLite3");
+    struct RClass* _class_sqlite3_resultset = mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(_class_sqlite3), mrb_intern(mrb, "ResultSet")));
     mrb_value c = mrb_class_new_instance(mrb, 0, NULL, _class_sqlite3_resultset);
     mrb_iv_set(mrb, c, mrb_intern(mrb, "context"), mrb_obj_value(
       Data_Wrap_Struct(mrb, mrb->object_class,
@@ -440,12 +451,10 @@ mrb_sqlite3_resultset_eof(mrb_state *mrb, mrb_value self) {
 
 void
 mrb_mruby_sqlite3_gem_init(mrb_state* mrb) {
-  int ai;
+  ARENA_SAVE;
+  struct RClass *_class_sqlite3 = mrb_define_module(mrb, "SQLite3");
 
-  _class_sqlite3 = mrb_define_module(mrb, "SQLite3");
-
-  ai = mrb_gc_arena_save(mrb);
-  _class_sqlite3_database = mrb_define_class_under(mrb, _class_sqlite3, "Database", mrb->object_class);
+  struct RClass *_class_sqlite3_database = mrb_define_class_under(mrb, _class_sqlite3, "Database", mrb->object_class);
   mrb_define_method(mrb, _class_sqlite3_database, "initialize", mrb_sqlite3_database_init, ARGS_OPT(1));
   mrb_define_method(mrb, _class_sqlite3_database, "execute", mrb_sqlite3_database_execute, ARGS_OPT(1));
   mrb_define_method(mrb, _class_sqlite3_database, "execute_batch", mrb_sqlite3_database_execute_batch, ARGS_OPT(1));
@@ -455,15 +464,14 @@ mrb_mruby_sqlite3_gem_init(mrb_state* mrb) {
   mrb_define_method(mrb, _class_sqlite3_database, "transaction", mrb_sqlite3_database_transaction, ARGS_NONE());
   mrb_define_method(mrb, _class_sqlite3_database, "commit", mrb_sqlite3_database_commit, ARGS_NONE());
   mrb_define_method(mrb, _class_sqlite3_database, "rollback", mrb_sqlite3_database_rollback, ARGS_NONE());
-  mrb_gc_arena_restore(mrb, ai);
+  ARENA_RESTORE;
 
-  ai = mrb_gc_arena_save(mrb);
-  _class_sqlite3_resultset = mrb_define_class_under(mrb, _class_sqlite3, "ResultSet", mrb->object_class);
+  struct RClass* _class_sqlite3_resultset = mrb_define_class_under(mrb, _class_sqlite3, "ResultSet", mrb->object_class);
   mrb_define_method(mrb, _class_sqlite3_resultset, "next", mrb_sqlite3_resultset_next, ARGS_NONE());
   mrb_define_method(mrb, _class_sqlite3_resultset, "close", mrb_sqlite3_resultset_close, ARGS_NONE());
   mrb_define_method(mrb, _class_sqlite3_resultset, "fields", mrb_sqlite3_resultset_fields, ARGS_NONE());
   mrb_define_method(mrb, _class_sqlite3_resultset, "eof?", mrb_sqlite3_resultset_eof, ARGS_NONE());
-  mrb_gc_arena_restore(mrb, ai);
+  ARENA_RESTORE;
 }
 
 /* vim:set et ts=2 sts=2 sw=2 tw=0: */
