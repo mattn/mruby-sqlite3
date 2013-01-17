@@ -61,7 +61,7 @@ static mrb_value
 mrb_sqlite3_database_init(mrb_state *mrb, mrb_value self) {
   char* name = NULL;
   mrb_value arg_file;
-  mrb_get_args(mrb, "o", &arg_file);
+  mrb_get_args(mrb, "|S", &arg_file);
   if (!mrb_nil_p(arg_file)) {
     size_t len = RSTRING_LEN(arg_file);
     name = malloc(len + 1);
@@ -456,8 +456,8 @@ mrb_mruby_sqlite3_gem_init(mrb_state* mrb) {
 
   struct RClass *_class_sqlite3_database = mrb_define_class_under(mrb, _class_sqlite3, "Database", mrb->object_class);
   mrb_define_method(mrb, _class_sqlite3_database, "initialize", mrb_sqlite3_database_init, ARGS_OPT(1));
-  mrb_define_method(mrb, _class_sqlite3_database, "execute", mrb_sqlite3_database_execute, ARGS_OPT(1));
-  mrb_define_method(mrb, _class_sqlite3_database, "execute_batch", mrb_sqlite3_database_execute_batch, ARGS_OPT(1));
+  mrb_define_method(mrb, _class_sqlite3_database, "execute", mrb_sqlite3_database_execute, ARGS_ANY());
+  mrb_define_method(mrb, _class_sqlite3_database, "execute_batch", mrb_sqlite3_database_execute_batch, ARGS_ANY());
   mrb_define_method(mrb, _class_sqlite3_database, "close", mrb_sqlite3_database_close, ARGS_NONE());
   mrb_define_method(mrb, _class_sqlite3_database, "last_insert_rowid", mrb_sqlite3_database_last_insert_rowid, ARGS_NONE());
   mrb_define_method(mrb, _class_sqlite3_database, "changes", mrb_sqlite3_database_changes, ARGS_NONE());
