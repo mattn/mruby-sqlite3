@@ -26,7 +26,7 @@ db.commit()
 
 db.transaction()
 (1..100).each_with_index {|x,i|
-  db.execute_batch('insert into bar(text) values(?)', x)
+  db.execute_batch('insert into bar(id, text) values(?, ?)', i, x)
 }
 db.commit()
 
