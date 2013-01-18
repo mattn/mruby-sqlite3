@@ -38,8 +38,8 @@ puts db.execute('select id from foo where text = ?', 'foo').next()[0]
 
 row = db.execute('select * from bar')
 puts row.fields()
-while !row.eof?
-  puts row.next()
+while cols = row.next()
+  puts cols
 end
 row.close()
 
