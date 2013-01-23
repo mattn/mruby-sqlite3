@@ -474,4 +474,8 @@ mrb_mruby_sqlite3_gem_init(mrb_state* mrb) {
   ARENA_RESTORE;
 }
 
+void
+mrb_mruby_sqlite3_gem_final(mrb_state* mrb) {
+}
+
 /* vim:set et ts=2 sts=2 sw=2 tw=0: */
