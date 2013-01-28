@@ -61,6 +61,10 @@ static mrb_value
 mrb_sqlite3_database_init(mrb_state *mrb, mrb_value self) {
   char* name = NULL;
   mrb_value arg_file;
+  sqlite3* sdb = NULL;
+  int rv;
+  mrb_sqlite3_database* db;
+
   mrb_get_args(mrb, "|S", &arg_file);
   if (!mrb_nil_p(arg_file)) {
     size_t len = RSTRING_LEN(arg_file);
@@ -72,8 +76,7 @@ mrb_sqlite3_database_init(mrb_state *mrb, mrb_value self) {
     name[len] = 0;
   }
 
-  sqlite3* sdb = NULL;
-  int rv = sqlite3_open_v2(name ? name : ":memory:", &sdb,
+  rv = sqlite3_open_v2(name ? name : ":memory:", &sdb,
       SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
       NULL);
   if (name) {
@@ -83,7 +86,7 @@ mrb_sqlite3_database_init(mrb_state *mrb, mrb_value self) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "can't open database");
   }
 
-  mrb_sqlite3_database* db = (mrb_sqlite3_database*)
+  db = (mrb_sqlite3_database*)
     malloc(sizeof(mrb_sqlite3_database));
   if (!db) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "can't memory alloc");
@@ -99,8 +102,8 @@ mrb_sqlite3_database_init(mrb_state *mrb, mrb_value self) {
 
 static const char*
 bind_values(mrb_state* mrb, sqlite3* db, sqlite3_stmt* stmt, int argc, mrb_value* argv) {
-  sqlite3_reset(stmt);
   int i;
+  sqlite3_reset(stmt);
   for (i = 0; i < argc; i++) {
     int rv = SQLITE_MISMATCH;
     switch (mrb_type(argv[i])) {
@@ -143,7 +146,7 @@ row_to_value(mrb_state* mrb, sqlite3_stmt* stmt) {
     case SQLITE_INTEGER:
       {
         sqlite3_int64 value = sqlite3_column_int64(stmt, i);
-        mrb_ary_push(mrb, a, mrb_fixnum_value(value));
+        mrb_ary_push(mrb, a, mrb_fixnum_value((mrb_int) value));
       }
       break;
     case SQLITE_FLOAT:
@@ -178,21 +181,27 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
   int argc = 0;
   mrb_value* argv = NULL;
   mrb_value b = mrb_nil_value();
+  mrb_value value_context;
+  mrb_sqlite3_database* db = NULL;
+  mrb_value fields;
+  int i, r, count;
+  mrb_value query = argv[0];
+  sqlite3_stmt* stmt = NULL;
+  mrb_value args[2];
+
   mrb_get_args(mrb, "&*", &b, &argv, &argc);
 
   if (argc == 0) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
   }
-  mrb_value value_context = mrb_iv_get(mrb, self, mrb_intern(mrb, "context"));
-  mrb_sqlite3_database* db = NULL;
+  value_context = mrb_iv_get(mrb, self, mrb_intern(mrb, "context"));
+  db = NULL;
   Data_Get_Struct(mrb, value_context, &mrb_sqlite3_database_type, db);
   if (!db) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
   }
 
-  mrb_value query = argv[0];
-  sqlite3_stmt* stmt = NULL;
-  int r = sqlite3_prepare_v2(db->db, RSTRING_PTR(query), RSTRING_LEN(query),
+  r = sqlite3_prepare_v2(db->db, RSTRING_PTR(query), RSTRING_LEN(query),
     &stmt, NULL);
   if (r != SQLITE_OK) {
     if (stmt) {
@@ -212,14 +221,17 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
     }
   }
 
-  mrb_value fields = mrb_ary_new(mrb);
-  int i, count = sqlite3_column_count(stmt);
+  fields = mrb_ary_new(mrb);
+  count = sqlite3_column_count(stmt);
   for (i = 0; i < count; i++) {
     const char* name = sqlite3_column_name(stmt, i);
     mrb_ary_push(mrb, fields, mrb_str_new_cstr(mrb, name));
   }
 
   if (mrb_nil_p(b)) {
+    struct RClass* _class_sqlite3;
+    struct RClass* _class_sqlite3_resultset;
+    mrb_value c;
     mrb_sqlite3_resultset* rs = (mrb_sqlite3_resultset*)
       malloc(sizeof(mrb_sqlite3_resultset));
     if (!rs) {
@@ -228,9 +240,9 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
     memset(rs, 0, sizeof(mrb_sqlite3_resultset));
     rs->mrb = mrb;
     rs->stmt = stmt;
-    struct RClass* _class_sqlite3 = mrb_class_get(mrb, "SQLite3");
-    struct RClass* _class_sqlite3_resultset = mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(_class_sqlite3), mrb_intern(mrb, "ResultSet")));
-    mrb_value c = mrb_class_new_instance(mrb, 0, NULL, _class_sqlite3_resultset);
+    _class_sqlite3 = mrb_class_get(mrb, "SQLite3");
+    _class_sqlite3_resultset = mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(_class_sqlite3), mrb_intern(mrb, "ResultSet")));
+    c = mrb_class_new_instance(mrb, 0, NULL, _class_sqlite3_resultset);
     mrb_iv_set(mrb, c, mrb_intern(mrb, "context"), mrb_obj_value(
       Data_Wrap_Struct(mrb, mrb->object_class,
       &mrb_sqlite3_resultset_type, (void*) rs)));
@@ -239,7 +251,6 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
     mrb_iv_set(mrb, c, mrb_intern(mrb, "eof"), mrb_false_value());
     return c;
   }
-  mrb_value args[2];
   while ((r = sqlite3_step(stmt)) == SQLITE_ROW) {
     int ai = mrb_gc_arena_save(mrb);
     args[0] = row_to_value(mrb, stmt);
@@ -258,27 +269,33 @@ static mrb_value
 mrb_sqlite3_database_execute_batch(mrb_state *mrb, mrb_value self) {
   int argc = 0;
   mrb_value *argv;
+  mrb_value value_context;
+  mrb_sqlite3_database* db = NULL;
+  mrb_value query;
+  int len;
+  char* top;
+  const char *tail, *sql;
+
   mrb_get_args(mrb, "*", &argv, &argc);
 
   if (argc == 0) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
   }
-  mrb_value value_context = mrb_iv_get(mrb, self, mrb_intern(mrb, "context"));
-  mrb_sqlite3_database* db = NULL;
+  value_context = mrb_iv_get(mrb, self, mrb_intern(mrb, "context"));
   Data_Get_Struct(mrb, value_context, &mrb_sqlite3_database_type, db);
   if (!db) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
   }
 
-  mrb_value query = argv[0];
-  int len = RSTRING_LEN(query);
-  char* top = malloc(len + 1);
+  query = argv[0];
+  len = RSTRING_LEN(query);
+  top = malloc(len + 1);
   if (!top) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "can't memory alloc");
   }
   memcpy(top, RSTRING_PTR(query), len);
   top[len] = 0;
-  const char *tail = (const char*) top, *sql;
+  tail = (const char*) top;
 
   while (*(sql = tail)) {
     sqlite3_stmt* stmt = NULL;
@@ -342,7 +359,7 @@ mrb_sqlite3_database_last_insert_rowid(mrb_state *mrb, mrb_value self) {
   if (!db) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
   }
-  return mrb_fixnum_value(sqlite3_last_insert_rowid(db->db));
+  return mrb_fixnum_value((mrb_int) sqlite3_last_insert_rowid(db->db));
 }
 
 static mrb_value
@@ -360,11 +377,12 @@ static mrb_value
 mrb_sqlite3_database_exec(mrb_state *mrb, mrb_value self, const char* query) {
   mrb_value value_context = mrb_iv_get(mrb, self, mrb_intern(mrb, "context"));
   mrb_sqlite3_database* db = NULL;
+  int r;
   Data_Get_Struct(mrb, value_context, &mrb_sqlite3_database_type, db);
   if (!db) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
   }
-  int r = sqlite3_exec(db->db, query, NULL, NULL, NULL);
+  r = sqlite3_exec(db->db, query, NULL, NULL, NULL);
   if (r != SQLITE_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, sqlite3_errmsg(db->db));
   }
@@ -390,16 +408,17 @@ static mrb_value
 mrb_sqlite3_resultset_next(mrb_state *mrb, mrb_value self) {
   mrb_value value_context = mrb_iv_get(mrb, self, mrb_intern(mrb, "context"));
   mrb_sqlite3_resultset* rs = NULL;
+  int r;
   Data_Get_Struct(mrb, value_context, &mrb_sqlite3_resultset_type, rs);
   if (!rs) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
   }
-  int r = sqlite3_step(rs->stmt);
+  r = sqlite3_step(rs->stmt);
   if (r != SQLITE_ROW && r != SQLITE_OK && r != SQLITE_DONE) {
     mrb_value vdb = mrb_iv_get(mrb, self, mrb_intern(mrb, "db"));
     if (!mrb_nil_p(vdb)) {
-      value_context = mrb_iv_get(mrb, vdb, mrb_intern(mrb, "context"));
       mrb_sqlite3_database* db = NULL;
+      value_context = mrb_iv_get(mrb, vdb, mrb_intern(mrb, "context"));
       Data_Get_Struct(mrb, value_context, &mrb_sqlite3_database_type, db);
       if (db) {
         mrb_raise(mrb, E_RUNTIME_ERROR, sqlite3_errmsg(db->db));
@@ -426,8 +445,8 @@ mrb_sqlite3_resultset_close(mrb_state *mrb, mrb_value self) {
   if (sqlite3_finalize(rs->stmt) != SQLITE_OK) {
     mrb_value vdb = mrb_iv_get(mrb, self, mrb_intern(mrb, "db"));
     if (!mrb_nil_p(vdb)) {
-      value_context = mrb_iv_get(mrb, vdb, mrb_intern(mrb, "context"));
       mrb_sqlite3_database* db = NULL;
+      value_context = mrb_iv_get(mrb, vdb, mrb_intern(mrb, "context"));
       Data_Get_Struct(mrb, value_context, &mrb_sqlite3_database_type, db);
       if (db) {
         mrb_raise(mrb, E_RUNTIME_ERROR, sqlite3_errmsg(db->db));
@@ -451,10 +470,14 @@ mrb_sqlite3_resultset_eof(mrb_state *mrb, mrb_value self) {
 
 void
 mrb_mruby_sqlite3_gem_init(mrb_state* mrb) {
+  struct RClass *_class_sqlite3;
+  struct RClass *_class_sqlite3_database;
+  struct RClass* _class_sqlite3_resultset;
   ARENA_SAVE;
-  struct RClass *_class_sqlite3 = mrb_define_module(mrb, "SQLite3");
+  
+  _class_sqlite3 = mrb_define_module(mrb, "SQLite3");
 
-  struct RClass *_class_sqlite3_database = mrb_define_class_under(mrb, _class_sqlite3, "Database", mrb->object_class);
+  _class_sqlite3_database = mrb_define_class_under(mrb, _class_sqlite3, "Database", mrb->object_class);
   mrb_define_method(mrb, _class_sqlite3_database, "initialize", mrb_sqlite3_database_init, ARGS_OPT(1));
   mrb_define_method(mrb, _class_sqlite3_database, "execute", mrb_sqlite3_database_execute, ARGS_ANY());
   mrb_define_method(mrb, _class_sqlite3_database, "execute_batch", mrb_sqlite3_database_execute_batch, ARGS_ANY());
@@ -466,7 +489,7 @@ mrb_mruby_sqlite3_gem_init(mrb_state* mrb) {
   mrb_define_method(mrb, _class_sqlite3_database, "rollback", mrb_sqlite3_database_rollback, ARGS_NONE());
   ARENA_RESTORE;
 
-  struct RClass* _class_sqlite3_resultset = mrb_define_class_under(mrb, _class_sqlite3, "ResultSet", mrb->object_class);
+  _class_sqlite3_resultset = mrb_define_class_under(mrb, _class_sqlite3, "ResultSet", mrb->object_class);
   mrb_define_method(mrb, _class_sqlite3_resultset, "next", mrb_sqlite3_resultset_next, ARGS_NONE());
   mrb_define_method(mrb, _class_sqlite3_resultset, "close", mrb_sqlite3_resultset_close, ARGS_NONE());
   mrb_define_method(mrb, _class_sqlite3_resultset, "fields", mrb_sqlite3_resultset_fields, ARGS_NONE());
