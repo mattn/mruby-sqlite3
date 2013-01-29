@@ -77,7 +77,10 @@ mrb_sqlite3_database_init(mrb_state *mrb, mrb_value self) {
   }
 
   rv = sqlite3_open_v2(name ? name : ":memory:", &sdb,
-      SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+      SQLITE_OPEN_FULLMUTEX |
+      SQLITE_OPEN_READWRITE |
+      SQLITE_OPEN_CREATE |
+      SQLITE_OPEN_URI,
       NULL);
   if (name) {
     free(name);
