@@ -188,15 +188,12 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
   mrb_sqlite3_database* db = NULL;
   mrb_value fields;
   int i, r, count;
-  mrb_value query = argv[0];
   sqlite3_stmt* stmt = NULL;
   mrb_value args[2];
+  mrb_value query;
 
-  mrb_get_args(mrb, "&*", &b, &argv, &argc);
+  mrb_get_args(mrb, "&S*", &b, &query, &argv, &argc);
 
-  if (argc == 0) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid argument");
-  }
   value_context = mrb_iv_get(mrb, self, mrb_intern(mrb, "context"));
   db = NULL;
   Data_Get_Struct(mrb, value_context, &mrb_sqlite3_database_type, db);
@@ -217,8 +214,8 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
     return mrb_nil_value();
   }
 
-  if (argc > 1) {
-    const char* error = bind_values(mrb, db->db, stmt, argc-1, &argv[1]);
+  if (argc > 0) {
+    const char* error = bind_values(mrb, db->db, stmt, argc, argv);
     if (error) {
       mrb_raise(mrb, E_ARGUMENT_ERROR, error);
     }
