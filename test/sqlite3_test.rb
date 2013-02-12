@@ -50,7 +50,6 @@ assert('transaction long') do
     s += 1 if row[0] == n
     n += 1
   end
-  puts s
   db.close
   s == 100
 end
