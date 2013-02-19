@@ -80,7 +80,10 @@ mrb_sqlite3_database_init(mrb_state *mrb, mrb_value self) {
       SQLITE_OPEN_FULLMUTEX |
       SQLITE_OPEN_READWRITE |
       SQLITE_OPEN_CREATE |
-      SQLITE_OPEN_URI,
+#ifdef SQLITE_OPEN_URI
+      SQLITE_OPEN_URI |
+#endif
+      0,
       NULL);
   if (name) {
     free(name);
