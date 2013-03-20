@@ -8,7 +8,7 @@
 #include <mruby/class.h>
 #include <mruby/variable.h>
 #include <sqlite3.h>
-#include <stdio.h>
+#include <stdlib.h>
 
 #if 1
 #define ARENA_SAVE \
