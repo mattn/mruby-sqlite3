@@ -100,9 +100,10 @@ mrb_sqlite3_database_init(mrb_state *mrb, mrb_value self) {
   memset(db, 0, sizeof(mrb_sqlite3_database));
   db->mrb = mrb;
   db->db = sdb;
+
   mrb_iv_set(mrb, self, mrb_intern(mrb, "context"), mrb_obj_value(
-    Data_Wrap_Struct(mrb, mrb->object_class,
-    &mrb_sqlite3_database_type, (void*) db)));
+  Data_Wrap_Struct(mrb, mrb->object_class,
+  &mrb_sqlite3_database_type, (void*) db)));
   return self;
 }
 
