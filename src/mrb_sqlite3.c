@@ -159,7 +159,7 @@ row_to_value(mrb_state* mrb, sqlite3_stmt* stmt) {
     case SQLITE_FLOAT:
       {
         double value = sqlite3_column_double(stmt, i);
-        mrb_ary_push(mrb, a, mrb_float_value(value));
+        mrb_ary_push(mrb, a, mrb_float_value(mrb, value));
       }
       break;
     case SQLITE_BLOB:
