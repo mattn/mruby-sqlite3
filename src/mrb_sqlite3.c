@@ -1,5 +1,5 @@
 #include <errno.h>
-#include <memory.h>
+#include <string.h>
 #include <mruby.h>
 #include <mruby/proc.h>
 #include <mruby/data.h>
