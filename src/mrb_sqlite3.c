@@ -118,7 +118,7 @@ bind_values(mrb_state* mrb, sqlite3* db, sqlite3_stmt* stmt, int argc, mrb_value
       rv = sqlite3_bind_text(stmt, i+1, RSTRING_PTR(argv[i]), RSTRING_LEN(argv[i]), NULL);
       break;
     case MRB_TT_FIXNUM:
-      rv = sqlite3_bind_int(stmt, i+1, mrb_fixnum(argv[i]));
+      rv = sqlite3_bind_int64(stmt, i+1, mrb_fixnum(argv[i]));
       break;
     case MRB_TT_FLOAT:
       rv = sqlite3_bind_double(stmt, i+1, mrb_float(argv[i]));
