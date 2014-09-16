@@ -182,7 +182,7 @@ row_to_value(mrb_state* mrb, sqlite3_stmt* stmt) {
 
 static mrb_value
 mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
-  int argc = 0;
+  mrb_int argc = 0;
   mrb_value* argv = NULL;
   mrb_value b = mrb_nil_value();
   mrb_value value_context;
@@ -268,7 +268,7 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
 
 static mrb_value
 mrb_sqlite3_database_execute_batch(mrb_state *mrb, mrb_value self) {
-  int argc = 0;
+  mrb_int argc = 0;
   mrb_value *argv;
   mrb_value value_context;
   mrb_sqlite3_database* db = NULL;
