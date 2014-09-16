@@ -118,7 +118,7 @@ bind_values(mrb_state* mrb, sqlite3* db, sqlite3_stmt* stmt, int argc, mrb_value
       rv = sqlite3_bind_text(stmt, i+1, RSTRING_PTR(argv[i]), RSTRING_LEN(argv[i]), NULL);
       break;
     case MRB_TT_FIXNUM:
-      rv = sqlite3_bind_int(stmt, i+1, mrb_fixnum(argv[i]));
+      rv = sqlite3_bind_int64(stmt, i+1, mrb_fixnum(argv[i]));
       break;
     case MRB_TT_FLOAT:
       rv = sqlite3_bind_double(stmt, i+1, mrb_float(argv[i]));
@@ -182,7 +182,7 @@ row_to_value(mrb_state* mrb, sqlite3_stmt* stmt) {
 
 static mrb_value
 mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
-  int argc = 0;
+  mrb_int argc = 0;
   mrb_value* argv = NULL;
   mrb_value b = mrb_nil_value();
   mrb_value value_context;
@@ -268,7 +268,7 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
 
 static mrb_value
 mrb_sqlite3_database_execute_batch(mrb_state *mrb, mrb_value self) {
-  int argc = 0;
+  mrb_int argc = 0;
   mrb_value *argv;
   mrb_value value_context;
   mrb_sqlite3_database* db = NULL;
