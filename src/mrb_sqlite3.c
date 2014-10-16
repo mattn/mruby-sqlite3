@@ -111,9 +111,6 @@ bind_values(mrb_state* mrb, sqlite3* db, sqlite3_stmt* stmt, int argc, mrb_value
   for (i = 0; i < argc; i++) {
     int rv = SQLITE_MISMATCH;
     switch (mrb_type(argv[i])) {
-    case MRB_TT_UNDEF:
-      rv = sqlite3_bind_null(stmt, i+1);
-      break;
     case MRB_TT_STRING:
       rv = sqlite3_bind_text(stmt, i+1, RSTRING_PTR(argv[i]), RSTRING_LEN(argv[i]), NULL);
       break;
@@ -127,7 +124,11 @@ bind_values(mrb_state* mrb, sqlite3* db, sqlite3_stmt* stmt, int argc, mrb_value
       rv = sqlite3_bind_int(stmt, i+1, 1);
       break;
     case MRB_TT_FALSE:
-      rv = sqlite3_bind_int(stmt, i+1, 0);
+      if (mrb_nil_p(argv[i])) {
+        rv = sqlite3_bind_null(stmt, i+1);
+      } else {
+        rv = sqlite3_bind_int(stmt, i+1, 0);
+      }
       break;
     default:
       return "invalid argument";

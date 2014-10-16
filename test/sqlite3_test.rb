@@ -53,3 +53,14 @@ assert('transaction long') do
   db.close
   s == 100
 end
+
+assert('bind nil') do
+  db = SQLite3::Database.new('mruby-sqlite-test.db')
+  db.execute_batch('insert into bar(text) values(?)', nil)
+  s = true
+  db.execute('select text from bar order by id desc limit 1 offset 0') do |row, fields|
+    s = row[0]
+  end
+  db.close
+  s.nil?
+end
