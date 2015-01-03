@@ -64,3 +64,14 @@ assert('bind nil') do
   db.close
   s.nil?
 end
+
+assert('fetch with resultset') do
+  db = SQLite3::Database.new('mruby-sqlite-test.db')
+  rs = db.execute('select id from bar')
+  row = rs.next
+  while row
+    row = rs.next
+  end
+  db.close
+  true
+end

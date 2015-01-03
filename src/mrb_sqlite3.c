@@ -242,7 +242,7 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
     memset(rs, 0, sizeof(mrb_sqlite3_resultset));
     rs->mrb = mrb;
     rs->stmt = stmt;
-    _class_sqlite3 = mrb_class_get(mrb, "SQLite3");
+    _class_sqlite3 = mrb_module_get(mrb, "SQLite3");
     _class_sqlite3_resultset = mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(_class_sqlite3), mrb_intern_lit(mrb, "ResultSet")));
     c = mrb_class_new_instance(mrb, 0, NULL, _class_sqlite3_resultset);
     mrb_iv_set(mrb, c, mrb_intern_lit(mrb, "context"), mrb_obj_value(
