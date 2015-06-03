@@ -57,21 +57,11 @@ static const struct mrb_data_type mrb_sqlite3_resultset_type = {
 static mrb_value
 mrb_sqlite3_database_init(mrb_state *mrb, mrb_value self) {
   char* name = NULL;
-  mrb_value arg_file;
   sqlite3* sdb = NULL;
   int rv;
   mrb_sqlite3_database* db;
 
-  mrb_get_args(mrb, "|S", &arg_file);
-  if (!mrb_nil_p(arg_file)) {
-    size_t len = RSTRING_LEN(arg_file);
-    name = malloc(len + 1);
-    if (!name) {
-      mrb_raise(mrb, E_RUNTIME_ERROR, "can't memory alloc");
-    }
-    strncpy(name, RSTRING_PTR(arg_file), len);
-    name[len] = 0;
-  }
+  mrb_get_args(mrb, "|z", &name);
 
   rv = sqlite3_open_v2(name ? name : ":memory:", &sdb,
       SQLITE_OPEN_FULLMUTEX |
@@ -82,9 +72,6 @@ mrb_sqlite3_database_init(mrb_state *mrb, mrb_value self) {
 #endif
       0,
       NULL);
-  if (name) {
-    free(name);
-  }
   if (rv != SQLITE_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "can't open database");
   }
@@ -476,7 +463,7 @@ mrb_mruby_sqlite3_gem_init(mrb_state* mrb) {
   struct RClass *_class_sqlite3_database;
   struct RClass* _class_sqlite3_resultset;
   ARENA_SAVE;
-  
+
   _class_sqlite3 = mrb_define_module(mrb, "SQLite3");
 
   _class_sqlite3_database = mrb_define_class_under(mrb, _class_sqlite3, "Database", mrb->object_class);

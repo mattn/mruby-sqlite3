@@ -75,3 +75,16 @@ assert('fetch with resultset') do
   db.close
   true
 end
+
+assert('open in-memory database without parameter') do
+  db = SQLite3::Database.new
+  empty = true
+  # file name should be empty
+  db.execute('Pragma database_list;') do |r|
+    if r[1] == 'main'
+      empty = (r[2] == '')
+    end
+  end
+  db.close
+  empty
+end
