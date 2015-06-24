@@ -57,21 +57,11 @@ static const struct mrb_data_type mrb_sqlite3_resultset_type = {
 static mrb_value
 mrb_sqlite3_database_init(mrb_state *mrb, mrb_value self) {
   char* name = NULL;
-  mrb_value arg_file;
   sqlite3* sdb = NULL;
   int rv;
   mrb_sqlite3_database* db;
 
-  mrb_get_args(mrb, "|S", &arg_file);
-  if (!mrb_nil_p(arg_file)) {
-    size_t len = RSTRING_LEN(arg_file);
-    name = malloc(len + 1);
-    if (!name) {
-      mrb_raise(mrb, E_RUNTIME_ERROR, "can't memory alloc");
-    }
-    strncpy(name, RSTRING_PTR(arg_file), len);
-    name[len] = 0;
-  }
+  mrb_get_args(mrb, "|z", &name);
 
   rv = sqlite3_open_v2(name ? name : ":memory:", &sdb,
       SQLITE_OPEN_FULLMUTEX |
@@ -82,9 +72,6 @@ mrb_sqlite3_database_init(mrb_state *mrb, mrb_value self) {
 #endif
       0,
       NULL);
-  if (name) {
-    free(name);
-  }
   if (rv != SQLITE_OK) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "can't open database");
   }
@@ -111,9 +98,6 @@ bind_values(mrb_state* mrb, sqlite3* db, sqlite3_stmt* stmt, int argc, mrb_value
   for (i = 0; i < argc; i++) {
     int rv = SQLITE_MISMATCH;
     switch (mrb_type(argv[i])) {
-    case MRB_TT_UNDEF:
-      rv = sqlite3_bind_null(stmt, i+1);
-      break;
     case MRB_TT_STRING:
       rv = sqlite3_bind_text(stmt, i+1, RSTRING_PTR(argv[i]), RSTRING_LEN(argv[i]), NULL);
       break;
@@ -127,7 +111,11 @@ bind_values(mrb_state* mrb, sqlite3* db, sqlite3_stmt* stmt, int argc, mrb_value
       rv = sqlite3_bind_int(stmt, i+1, 1);
       break;
     case MRB_TT_FALSE:
-      rv = sqlite3_bind_int(stmt, i+1, 0);
+      if (mrb_nil_p(argv[i])) {
+        rv = sqlite3_bind_null(stmt, i+1);
+      } else {
+        rv = sqlite3_bind_int(stmt, i+1, 0);
+      }
       break;
     default:
       return "invalid argument";
@@ -241,7 +229,7 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
     memset(rs, 0, sizeof(mrb_sqlite3_resultset));
     rs->mrb = mrb;
     rs->stmt = stmt;
-    _class_sqlite3 = mrb_class_get(mrb, "SQLite3");
+    _class_sqlite3 = mrb_module_get(mrb, "SQLite3");
     _class_sqlite3_resultset = mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(_class_sqlite3), mrb_intern_lit(mrb, "ResultSet")));
     c = mrb_class_new_instance(mrb, 0, NULL, _class_sqlite3_resultset);
     mrb_iv_set(mrb, c, mrb_intern_lit(mrb, "context"), mrb_obj_value(
@@ -475,7 +463,7 @@ mrb_mruby_sqlite3_gem_init(mrb_state* mrb) {
   struct RClass *_class_sqlite3_database;
   struct RClass* _class_sqlite3_resultset;
   ARENA_SAVE;
-  
+
   _class_sqlite3 = mrb_define_module(mrb, "SQLite3");
 
   _class_sqlite3_database = mrb_define_class_under(mrb, _class_sqlite3, "Database", mrb->object_class);
