@@ -479,22 +479,22 @@ mrb_mruby_sqlite3_gem_init(mrb_state* mrb) {
   _class_sqlite3 = mrb_define_module(mrb, "SQLite3");
 
   _class_sqlite3_database = mrb_define_class_under(mrb, _class_sqlite3, "Database", mrb->object_class);
-  mrb_define_method(mrb, _class_sqlite3_database, "initialize", mrb_sqlite3_database_init, ARGS_OPT(1));
-  mrb_define_method(mrb, _class_sqlite3_database, "execute", mrb_sqlite3_database_execute, ARGS_ANY());
-  mrb_define_method(mrb, _class_sqlite3_database, "execute_batch", mrb_sqlite3_database_execute_batch, ARGS_ANY());
-  mrb_define_method(mrb, _class_sqlite3_database, "close", mrb_sqlite3_database_close, ARGS_NONE());
-  mrb_define_method(mrb, _class_sqlite3_database, "last_insert_rowid", mrb_sqlite3_database_last_insert_rowid, ARGS_NONE());
-  mrb_define_method(mrb, _class_sqlite3_database, "changes", mrb_sqlite3_database_changes, ARGS_NONE());
-  mrb_define_method(mrb, _class_sqlite3_database, "transaction", mrb_sqlite3_database_transaction, ARGS_NONE());
-  mrb_define_method(mrb, _class_sqlite3_database, "commit", mrb_sqlite3_database_commit, ARGS_NONE());
-  mrb_define_method(mrb, _class_sqlite3_database, "rollback", mrb_sqlite3_database_rollback, ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_database, "initialize", mrb_sqlite3_database_init, MRB_ARGS_OPT(1));
+  mrb_define_method(mrb, _class_sqlite3_database, "execute", mrb_sqlite3_database_execute, MRB_ARGS_ANY());
+  mrb_define_method(mrb, _class_sqlite3_database, "execute_batch", mrb_sqlite3_database_execute_batch, MRB_ARGS_ANY());
+  mrb_define_method(mrb, _class_sqlite3_database, "close", mrb_sqlite3_database_close, MRB_ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_database, "last_insert_rowid", mrb_sqlite3_database_last_insert_rowid, MRB_ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_database, "changes", mrb_sqlite3_database_changes, MRB_ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_database, "transaction", mrb_sqlite3_database_transaction, MRB_ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_database, "commit", mrb_sqlite3_database_commit, MRB_ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_database, "rollback", mrb_sqlite3_database_rollback, MRB_ARGS_NONE());
   ARENA_RESTORE;
 
   _class_sqlite3_resultset = mrb_define_class_under(mrb, _class_sqlite3, "ResultSet", mrb->object_class);
-  mrb_define_method(mrb, _class_sqlite3_resultset, "next", mrb_sqlite3_resultset_next, ARGS_NONE());
-  mrb_define_method(mrb, _class_sqlite3_resultset, "close", mrb_sqlite3_resultset_close, ARGS_NONE());
-  mrb_define_method(mrb, _class_sqlite3_resultset, "fields", mrb_sqlite3_resultset_fields, ARGS_NONE());
-  mrb_define_method(mrb, _class_sqlite3_resultset, "eof?", mrb_sqlite3_resultset_eof, ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_resultset, "next", mrb_sqlite3_resultset_next, MRB_ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_resultset, "close", mrb_sqlite3_resultset_close, MRB_ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_resultset, "fields", mrb_sqlite3_resultset_fields, MRB_ARGS_NONE());
+  mrb_define_method(mrb, _class_sqlite3_resultset, "eof?", mrb_sqlite3_resultset_eof, MRB_ARGS_NONE());
   ARENA_RESTORE;
 }
 
