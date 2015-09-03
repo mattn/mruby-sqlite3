@@ -35,6 +35,11 @@ static void
 mrb_sqlite3_database_free(mrb_state *mrb, void *p) {
   mrb_sqlite3_database* db = (mrb_sqlite3_database*) p;
   if (db->db) {
+    //sqlite3_close_v2 should be used in garbage collected set ups
+    //to make sure memory is not leaked, but it is a fairly recent
+    //function so reverting the change for now till we check availability
+    //on android & ios, or we should bring in sqlite3 build into the engine
+    //sqlite3_close_v2(db->db);
     sqlite3_close(db->db);
   }
   free(db);
@@ -43,6 +48,7 @@ mrb_sqlite3_database_free(mrb_state *mrb, void *p) {
 static void
 mrb_sqlite3_resultset_free(mrb_state *mrb, void *p) {
   mrb_sqlite3_resultset* rs = (mrb_sqlite3_resultset*) p;
+  sqlite3_finalize(rs->stmt);
   free(rs);
 }
 
@@ -195,7 +201,6 @@ mrb_sqlite3_database_execute(mrb_state *mrb, mrb_value self) {
   if (r != SQLITE_OK) {
     if (stmt) {
       sqlite3_finalize(stmt);
-      sqlite3_reset(stmt);
     }
     mrb_raise(mrb, E_RUNTIME_ERROR, sqlite3_errmsg(db->db));
   }
